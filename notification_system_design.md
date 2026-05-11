@@ -349,3 +349,148 @@ db.notifications.countDocuments({
   is_read: false
 })
 ```
+
+# Stage 3
+
+## The Query in Question
+
+```sql
+SELECT * FROM notifications
+WHERE studentID = 1042 AND isRead = false
+ORDER BY createdAt ASC;
+```
+
+---
+
+## 1. Is this query accurate?
+
+The query is mostly correct because it fetches unread notifications for a particular student and sorts them based on creation time.
+
+However, one thing that can be improved is the use of `SELECT *`. Fetching every column is usually unnecessary because the frontend may only need a few fields like notification type, message, and timestamp. As the dataset grows, returning extra data increases memory usage and query time.
+
+A better version would be:
+
+```sql
+SELECT id, studentID, notification_type, message, isRead, createdAt
+FROM notifications
+WHERE studentID = 1042 AND isRead = false
+ORDER BY createdAt ASC;
+```
+
+---
+
+## 2. Why is this query slow?
+
+With 5 million notifications in the database, performance issues are expected if proper indexing is not used.
+
+### Reason 1: Full table scan
+
+If there is no index on `studentID` and `isRead`, the database may scan a very large portion of the table before finding matching rows. As the number of records increases, this becomes slower.
+
+### Reason 2: Sorting cost
+
+The query also sorts results using `createdAt`. Without an index supporting the sorting order, the database has to perform additional sorting operations in memory.
+
+### Reason 3: Fetching unnecessary columns
+
+Using `SELECT *` increases the amount of data read from disk and sent to the application, even if some columns are never used.
+
+In notification systems, read operations happen very frequently, so query optimization becomes important as the number of users grows.
+
+---
+
+## 3. What changes would improve the query?
+
+### Use a composite index
+
+A composite index is more useful here than separate indexes on individual columns.
+
+```sql
+CREATE INDEX idx_notifications_student_read_date
+ON notifications(studentID, isRead, createdAt ASC);
+```
+
+This helps because:
+- the database can quickly locate notifications for a specific student
+- unread notifications are filtered faster
+- results are already closer to the required sorting order
+
+### Add pagination
+
+Returning thousands of notifications at once is unnecessary and expensive.
+
+```sql
+SELECT id, studentID, notification_type, message, isRead, createdAt
+FROM notifications
+WHERE studentID = 1042
+AND isRead = false
+ORDER BY createdAt ASC
+LIMIT 20 OFFSET 0;
+```
+
+---
+
+## 4. Likely Computation Cost
+
+Without indexing, the query performance can become close to a full table scan as the dataset grows.
+
+After adding a proper composite index, the database only needs to scan a much smaller subset of rows instead of checking the entire table.
+
+This reduces response time significantly and improves overall API performance.
+
+---
+
+## 5. Should every column be indexed?
+
+No, adding indexes on every column is not a good approach.
+
+Indexes improve read performance, but they also increase:
+- storage usage
+- insert/update time
+- maintenance overhead
+
+Since notifications are generated frequently, excessive indexing can slow down write operations.
+
+Indexes should mainly be added on:
+- columns used in filtering
+- columns used in sorting
+- columns frequently used in joins
+
+It is generally better to design indexes based on actual query patterns instead of indexing every field.
+
+---
+
+## 6. Query to Find Students Who Received Placement Notifications in Last 7 Days
+
+```sql
+SELECT DISTINCT studentID
+FROM notifications
+WHERE notificationType = 'Placement'
+AND createdAt >= NOW() - INTERVAL '7 days';
+```
+
+This query returns unique students who received placement notifications during the last 7 days.
+
+If student details are also needed:
+
+```sql
+SELECT DISTINCT s.id, s.name, s.email
+FROM notifications n
+JOIN students s ON s.id = n.studentID
+WHERE n.notificationType = 'Placement'
+AND n.createdAt >= NOW() - INTERVAL '7 days';
+```
+
+---
+
+## 7. Additional Improvements
+
+As the platform grows further, additional optimizations can also help:
+
+- archiving older notifications
+- caching unread counts
+- database partitioning
+- using read replicas for heavy traffic
+- limiting unnecessary API calls
+
+These changes can help maintain performance even when the system scales to millions of records.
