@@ -635,3 +635,197 @@ The best solution would be a combination of:
 - SSE/WebSocket based real-time updates
 
 This reduces unnecessary database hits while still providing a fast and smooth notification experience for students even at large scale.
+
+# Stage 5
+
+The current implementation works logically, but it is not reliable or scalable for a system handling notifications for 50,000 students simultaneously.
+
+```python
+function notify_all(student_ids: array, message: string):
+    for student_id in student_ids:
+        send_email(student_id, message)
+        save_to_db(student_id, message)
+        push_to_app(student_id, message)
+```
+
+---
+
+# Problems with the Current Approach
+
+## 1. Sequential Processing
+
+The notifications are being processed one student at a time. The process of sending alerts to the students takes one complete student at a time until all students have been served.
+
+For 50,000 students:
+- email sending becomes very slow
+- database writes become slow
+- the entire process may take several minutes
+
+The entire system experiences delays which start from one operation that gets postponed until its completion.
+---
+
+## 2. Failure Handling Problem
+
+Logs show that `send_email()` failed for 200 students midway.
+
+The current system implementation provides three specific outcomes: 
+- certain students receive application notifications while they do not receive any email notifications 
+- some users obtain email notifications but their database records fail to save 
+- safe retrying processes become challenging to implement 
+
+This creates inconsistent data.
+
+---
+
+## 3. Tight Coupling of Operations
+
+All operations are dependent on each other inside the same loop.
+
+```python
+send_email()
+save_to_db()
+push_to_app()
+```
+
+If one step fails, the remaining steps may also get affected.
+
+This makes the system less reliable.
+
+---
+
+## 4. Poor Scalability
+
+Handling all operations synchronously increases:
+- API response time
+- server load
+- memory usage
+
+At large scale, this can overwhelm the application server.
+
+---
+
+# Better Approach
+
+A better design would use:
+- message queues
+- asynchronous workers
+- retry mechanisms
+- batch processing
+
+The API should accept the request quickly and process notifications in the background.
+
+---
+
+# Improved Architecture
+
+## Step 1 — Save Notification Request
+
+When HR clicks "Notify All":
+- create notification entries in DB
+- push jobs into a queue
+
+Example queues:
+- email queue
+- push notification queue
+
+---
+
+## Step 2 — Worker Services Process Jobs
+
+Separate worker processes handle:
+- sending emails
+- sending app notifications
+
+This prevents the main API from becoming slow.
+
+---
+
+## Step 3 — Retry Failed Jobs
+
+If email sending fails for some students:
+- failed jobs should automatically retry
+- retry count should be limited
+- failed jobs can move to a dead-letter queue after multiple failures
+
+This improves reliability.
+
+---
+
+# Should DB Save and Email Sending Happen Together?
+
+No, they should not happen as a single tightly-coupled operation.
+
+The notification should first be saved in the database because:
+- DB becomes the source of truth
+- notification history is preserved
+- users can still see in-app notifications even if email fails
+
+After successful DB insertion:
+- email sending can happen asynchronously
+- push notifications can happen separately
+
+This approach is more fault tolerant.
+
+---
+
+# Revised Pseudocode
+
+```python
+function notify_all(student_ids, message):
+
+    notifications = []
+
+    for student_id in student_ids:
+
+        notifications.append({
+            student_id: student_id,
+            message: message,
+            is_read: false
+        })
+
+    bulk_insert_notifications(notifications)
+
+    for student_id in student_ids:
+
+        email_queue.publish({
+            student_id: student_id,
+            message: message
+        })
+
+        push_queue.publish({
+            student_id: student_id,
+            message: message
+        })
+
+    return "Notifications queued successfully"
+```
+
+---
+
+# Why This Design is Better
+
+## Faster
+The API returns quickly instead of waiting for all emails to finish.
+
+## More Reliable
+Failures can be retried independently without affecting the whole system.
+
+## Easier to Scale
+More worker instances can be added during heavy traffic.
+
+## Better User Experience
+Students receive notifications faster and the application remains responsive.
+
+---
+
+# Additional Improvements
+
+Some additional optimizations that can help:
+
+- batch database inserts
+- Redis or RabbitMQ for queues
+- rate limiting email providers
+- monitoring failed jobs
+- worker autoscaling during placement season
+
+These improvements help maintain stability during very high traffic.
