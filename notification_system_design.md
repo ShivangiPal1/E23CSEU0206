@@ -194,3 +194,158 @@ eventSource.addEventListener('new_notification', (event) => {
 | PATCH | `/api/v1/notifications/read-all` | Mark all notifications as read |
 | GET | `/api/v1/notifications/unread-count` | Get unread notification count |
 | GET | `/api/v1/notifications/stream` | Real-time notification stream |
+
+# Stage 2
+
+## Database Choice
+
+For storing notifications, I would use MongoDB.
+
+The main reason for choosing MongoDB is that notifications are simple JSON-like objects and their structure can change easily in future if more fields are added. Since the application may generate a large number of notifications continuously, MongoDB is a good fit because it handles frequent writes efficiently and also works well with Node.js applications.
+
+Another reason is that notifications are generally fetched user-wise and in sorted order (latest first), which MongoDB can handle efficiently using indexes.
+
+---
+
+# Database Schema
+
+## Notifications Collection
+
+```json
+{
+  "_id": "ObjectId",
+  "user_id": "student_101",
+  "type": "Placement",
+  "message": "Microsoft is hiring interns",
+  "is_read": false,
+  "created_at": "2026-05-11T10:00:00Z"
+}
+```
+
+### Field Description
+
+| Field | Purpose |
+|---|---|
+| _id | Unique notification ID |
+| user_id | Student receiving the notification |
+| type | Notification category |
+| message | Notification content |
+| is_read | Read/unread status |
+| created_at | Notification creation time |
+
+
+
+# Indexing
+
+To improve performance, indexes can be created on:
+
+| Field | Reason |
+|---|---|
+| user_id | Faster notification retrieval for a student |
+| created_at | Faster sorting of latest notifications |
+| is_read | Faster unread notification filtering |
+| type | Faster filtering by category |
+
+
+
+# Possible Issues at Scale
+
+## 1. Large Number of Notifications
+
+As more students use the platform, the notification collection can grow very large.
+
+### Solution
+- Use pagination while fetching notifications
+- Archive older notifications
+- Delete unnecessary old records after a certain period if needed
+
+
+## 2. Slow Query Performance
+
+If unread notifications are queried repeatedly for many users, performance may reduce over time.
+
+### Solution
+- Add proper indexes
+- Cache unread counts if required
+- Fetch only required fields instead of full documents
+
+
+
+## 3. Real-Time Connection Load
+
+Maintaining many active SSE connections at the same time may increase server load.
+
+### Solution
+- Scale the backend horizontally
+- Use load balancing
+- Move real-time services separately if traffic becomes very high
+
+
+
+# Sample MongoDB Queries
+
+## Get All Notifications
+
+```js
+db.notifications.find({
+  user_id: "student_101"
+})
+.sort({ created_at: -1 })
+.limit(20)
+```
+
+---
+
+## Get Notification By ID
+
+```js
+db.notifications.findOne({
+  _id: ObjectId("notification_id")
+})
+```
+
+
+
+## Mark Notification as Read
+
+```js
+db.notifications.updateOne(
+  {
+    _id: ObjectId("notification_id")
+  },
+  {
+    $set: {
+      is_read: true
+    }
+  }
+)
+```
+
+
+
+## Mark All Notifications as Read
+
+```js
+db.notifications.updateMany(
+  {
+    user_id: "student_101",
+    is_read: false
+  },
+  {
+    $set: {
+      is_read: true
+    }
+  }
+)
+```
+
+
+
+## Get Unread Notification Count
+
+```js
+db.notifications.countDocuments({
+  user_id: "student_101",
+  is_read: false
+})
+```
