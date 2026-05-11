@@ -494,3 +494,144 @@ As the platform grows further, additional optimizations can also help:
 - limiting unnecessary API calls
 
 These changes can help maintain performance even when the system scales to millions of records.
+
+# Stage 4
+
+Currently, notifications are being fetched from the database every time a student opens or refreshes the page. As the number of users grows, this creates a large number of repeated database queries, which increases load on the DB server and slows down the overall user experience.
+
+To improve performance and reduce unnecessary database traffic, I would use a combination of caching, pagination, and real-time updates.
+
+---
+
+# 1. Use Caching
+
+One of the biggest improvements would be adding a caching layer using Redis.
+
+Instead of querying the database on every request, recently fetched notifications or unread counts can be stored temporarily in cache.
+
+### Example
+- User opens notification page
+- Backend first checks Redis
+- If data exists in cache → return cached data
+- Otherwise fetch from DB and store in cache
+
+### Benefits
+- Reduces database load significantly
+- Faster API response times
+- Better user experience
+
+### Tradeoff
+Cached data may become slightly outdated for a short period of time if cache invalidation is not handled properly.
+
+---
+
+# 2. Use Pagination
+
+Fetching all notifications at once is expensive and unnecessary.
+
+Instead of loading everything:
+
+```sql
+SELECT * FROM notifications
+```
+
+the API should return notifications in smaller batches.
+
+Example:
+- first 20 notifications
+- load more when user scrolls
+
+### Benefits
+- Smaller DB queries
+- Faster page load
+- Reduced memory usage
+
+### Tradeoff
+Requires additional frontend logic for pagination or infinite scrolling.
+
+---
+
+# 3. Use Real-Time Updates Instead of Frequent Fetching
+
+Currently, notifications are fetched repeatedly on every page refresh.
+
+A better solution is to use Server-Sent Events (SSE) or WebSockets so the server pushes new notifications only when something changes.
+
+### Benefits
+- Reduces repeated API calls
+- Real-time user experience
+- Lower unnecessary DB traffic
+
+### Tradeoff
+Maintaining persistent connections increases server complexity and memory usage compared to simple REST APIs.
+
+---
+
+# 4. Fetch Only Required Data
+
+The frontend usually does not need every column from the notifications table.
+
+Instead of:
+
+```sql
+SELECT *
+```
+
+only required fields should be selected.
+
+Example:
+
+```sql
+SELECT id, message, notificationType, createdAt
+FROM notifications
+WHERE studentID = 1042;
+```
+
+### Benefits
+- Less data transferred
+- Faster query execution
+- Lower memory usage
+
+### Tradeoff
+Requires more careful API design since different screens may require different fields.
+
+---
+
+# 5. Add Proper Indexing
+
+Indexes should be added on commonly filtered columns such as:
+- studentID
+- isRead
+- createdAt
+
+### Benefits
+- Faster filtering and sorting
+- Improved query performance
+
+### Tradeoff
+Too many indexes increase storage usage and slow down insert/update operations.
+
+---
+
+# 6. Archive Older Notifications
+
+Old notifications that are rarely accessed can be moved to a separate archive collection or table.
+
+### Benefits
+- Keeps the main notifications table smaller
+- Faster active queries
+
+### Tradeoff
+Archived notifications may take slightly longer to access if needed later.
+
+---
+
+# Final Approach
+
+The best solution would be a combination of:
+- Redis caching
+- pagination
+- proper indexing
+- SSE/WebSocket based real-time updates
+
+This reduces unnecessary database hits while still providing a fast and smooth notification experience for students even at large scale.
