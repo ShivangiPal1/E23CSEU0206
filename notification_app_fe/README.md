@@ -1,73 +1,55 @@
-# React + TypeScript + Vite
+# Notification Dashboard Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Stage 7 frontend for the campus notification system, built with React, Vite, and Material UI inside the existing repository.
 
-Currently, two official plugins are available:
+## What is included
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- All Notifications page with:
+- API fetch from `http://4.224.186.213/evaluation-service/notifications`
+  - proxied through the Vite dev server during local development
+  - bearer token support from `VITE_ACCESS_TOKEN`
+  - server-side `page`, `limit`, and `notification_type` query params
+  - unread vs viewed visual styling
+  - pagination and filters
+- Priority Notifications page with:
+  - top 10 ranking using the Stage 6 rule
+  - priority order `Placement > Result > Event`
+  - recency-aware scoring
+  - displayed priority score
+- Reusable structure under:
+  - `src/components`
+  - `src/pages`
+  - `src/services`
+  - `src/utils`
+  - `src/hooks`
+- Existing logging middleware reused through a small frontend logger wrapper
 
-## React Compiler
+## Setup
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Create a `.env` file inside `notification_app_fe/`:
 
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```env
+VITE_ACCESS_TOKEN=your_token
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Run
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev
 ```
+
+The Vite dev server is configured to run on [http://localhost:3000](http://localhost:3000).
+
+## Build
+
+```bash
+npm run build
+```
+
+## Notes
+
+- No backend files were changed.
+- The app is isolated inside `notification_app_fe/`.
+- If the API does not return total pagination metadata, the UI still supports next-page navigation using the page size and response length.
+- Sample screenshots can be added later inside the `screenshots/` folder.

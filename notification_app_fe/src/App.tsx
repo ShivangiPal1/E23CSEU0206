@@ -1,122 +1,115 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { useEffect, useState } from "react";
+import {
+  AppBar,
+  Box,
+  Container,
+  CssBaseline,
+  Tab,
+  Tabs,
+  Toolbar,
+  Typography,
+} from "@mui/material";
+import AllNotificationsPage from "./pages/AllNotificationsPage";
+import PriorityNotificationsPage from "./pages/PriorityNotificationsPage";
+import { logInfo } from "./utils/logger";
+
+type DashboardPage = "all" | "priority";
+
+const pageLabels: Record<DashboardPage, string> = {
+  all: "All Notifications",
+  priority: "Priority Inbox",
+};
+
+function getInitialPage(): DashboardPage {
+  return window.location.hash === "#priority" ? "priority" : "all";
+}
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [activePage, setActivePage] = useState<DashboardPage>(getInitialPage);
+
+  useEffect(() => {
+    window.location.hash = activePage === "priority" ? "priority" : "all";
+    void logInfo("page", `Opened ${pageLabels[activePage]} view`);
+  }, [activePage]);
+
+  useEffect(() => {
+    const syncPageWithHash = () => {
+      setActivePage(window.location.hash === "#priority" ? "priority" : "all");
+    };
+
+    window.addEventListener("hashchange", syncPageWithHash);
+    return () => window.removeEventListener("hashchange", syncPageWithHash);
+  }, []);
 
   return (
     <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
+      <CssBaseline />
+      <Box
+        sx={{
+          minHeight: "100vh",
+          background:
+            "linear-gradient(180deg, #eff6ff 0%, #f8fafc 28%, #ffffff 100%)",
+        }}
+      >
+        <AppBar
+          position="sticky"
+          elevation={0}
+          color="transparent"
+          sx={{
+            borderBottom: "1px solid",
+            borderColor: "divider",
+            backdropFilter: "blur(18px)",
+            backgroundColor: "rgba(248, 250, 252, 0.86)",
+          }}
         >
-          Count is {count}
-        </button>
-      </section>
+          <Toolbar
+            sx={{
+              flexDirection: { xs: "column", sm: "row" },
+              alignItems: { xs: "flex-start", sm: "center" },
+              gap: 2,
+              py: { xs: 1.5, sm: 1 },
+            }}
+          >
+            <Box sx={{ flexGrow: 1 }}>
+              <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                Campus Notification Dashboard
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Stage 7 frontend for browsing and prioritising campus updates
+              </Typography>
+            </Box>
 
-      <div className="ticks"></div>
+            <Tabs
+              value={activePage}
+              onChange={(_, nextPage: DashboardPage) => setActivePage(nextPage)}
+              textColor="primary"
+              indicatorColor="primary"
+              variant="scrollable"
+              allowScrollButtonsMobile
+              sx={{
+                minHeight: 44,
+                "& .MuiTab-root": {
+                  minHeight: 44,
+                  fontWeight: 600,
+                },
+              }}
+            >
+              <Tab value="all" label="All Notifications" />
+              <Tab value="priority" label="Priority Notifications" />
+            </Tabs>
+          </Toolbar>
+        </AppBar>
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
+        <Container maxWidth="lg" sx={{ py: { xs: 3, md: 5 } }}>
+          {activePage === "all" ? (
+            <AllNotificationsPage />
+          ) : (
+            <PriorityNotificationsPage />
+          )}
+        </Container>
+      </Box>
     </>
-  )
+  );
 }
 
-export default App
+export default App;
